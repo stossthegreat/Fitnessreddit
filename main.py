@@ -38,18 +38,14 @@ from config import PORT
 
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path == '/health':
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({
-                'status': 'healthy',
-                'service': 'skeletal-pt-intelligence-engine',
-                'timestamp': datetime.now().isoformat(),
-            }).encode())
-        else:
-            self.send_response(404)
-            self.end_headers()
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps({
+            'status': 'healthy',
+            'service': 'skeletal-pt-intelligence-engine',
+            'timestamp': datetime.now().isoformat(),
+        }).encode())
 
     def log_message(self, format, *args):
         pass  # Suppress access logs
