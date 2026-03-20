@@ -122,6 +122,10 @@ def run_full_report():
         summary_md = build_readable_summary(report)
         save_report(report, summary_md)
 
+        print("\n" + "="*60)
+        print(summary_md)
+        print("="*60)
+
         print(f"\nFULL REPORT COMPLETE")
         print(f"{'='*60}\n")
 
