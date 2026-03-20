@@ -1,13 +1,12 @@
-import praw
+import requests
 import json
 from openai import OpenAI
 from config import *
 
-reddit_client = praw.Reddit(
-    client_id=REDDIT_CLIENT_ID,
-    client_secret=REDDIT_CLIENT_SECRET,
-    user_agent=REDDIT_USER_AGENT,
-)
+HEADERS = {
+    'User-Agent': 'SkeletalPT Intelligence Bot 1.0',
+}
+
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 
@@ -16,14 +15,19 @@ def get_trending_topics():
     top_posts = []
 
     try:
-        combined = reddit_client.subreddit(
-            'fitness+weightlifting+bodybuilding+xxfitness'
-        )
-        for post in combined.hot(limit=40):
+        url = ("https://www.reddit.com/r/"
+               "fitness+weightlifting+bodybuilding+xxfitness"
+               "/hot.json?limit=40")
+        resp = requests.get(url, headers=HEADERS, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+
+        for child in data['data']['children']:
+            post = child['data']
             top_posts.append({
-                'title': post.title,
-                'score': post.score,
-                'subreddit': post.subreddit.display_name,
+                'title': post.get('title', ''),
+                'score': post.get('score', 0),
+                'subreddit': post.get('subreddit', ''),
             })
     except Exception as e:
         print(f"Trend stream error: {e}")

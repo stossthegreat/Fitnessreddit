@@ -1,15 +1,42 @@
-import praw
+import requests
 import time
 from datetime import datetime
 from openai import OpenAI
 from config import *
 
-reddit_client = praw.Reddit(
-    client_id=REDDIT_CLIENT_ID,
-    client_secret=REDDIT_CLIENT_SECRET,
-    user_agent=REDDIT_USER_AGENT,
-)
+HEADERS = {
+    'User-Agent': 'SkeletalPT Intelligence Bot 1.0',
+}
+
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
+
+
+def _fetch_subreddit_hot(sub_name, limit=75):
+    """Fetch hot posts from a subreddit using public JSON endpoint"""
+    url = f"https://www.reddit.com/r/{sub_name}/hot.json?limit={limit}"
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+        return [child['data'] for child in data['data']['children']]
+    except Exception as e:
+        print(f"Reddit fetch error r/{sub_name}: {e}")
+        return []
+
+
+def _search_reddit(query, time_filter='week', limit=25):
+    """Search all of Reddit using public JSON endpoint"""
+    url = (f"https://www.reddit.com/search.json"
+           f"?q={requests.utils.quote(query)}&t={time_filter}"
+           f"&limit={limit}&sort=relevance")
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+        return [child['data'] for child in data['data']['children']]
+    except Exception as e:
+        print(f"Reddit search error '{query}': {e}")
+        return []
 
 
 def scan_pain_points(hours_back=48):
@@ -19,34 +46,36 @@ def scan_pain_points(hours_back=48):
 
     for sub_name in SUBREDDITS:
         try:
-            sub = reddit_client.subreddit(sub_name)
-            for post in sub.hot(limit=75):
-                age_hours = (time.time() - post.created_utc) / 3600
+            posts = _fetch_subreddit_hot(sub_name, limit=75)
+
+            for post in posts:
+                age_hours = (time.time() - post.get('created_utc', 0)) / 3600
                 if age_hours > hours_back:
                     continue
 
-                text = f"{post.title} {post.selftext}".lower()
+                title = post.get('title', '')
+                selftext = post.get('selftext', '')
+                text = f"{title} {selftext}".lower()
+                score = post.get('score', 0)
+                permalink = post.get('permalink', '')
 
                 for keyword in PAIN_POINT_KEYWORDS:
-                    if keyword in text and post.score >= 30:
+                    if keyword in text and score >= 30:
                         pain_points.append({
                             'subreddit': sub_name,
-                            'title': post.title,
-                            'body_preview': post.selftext[:300],
-                            'score': post.score,
-                            'comments': post.num_comments,
-                            'url': f"https://reddit.com{post.permalink}",
+                            'title': title,
+                            'body_preview': selftext[:300],
+                            'score': score,
+                            'comments': post.get('num_comments', 0),
+                            'url': f"https://reddit.com{permalink}",
                             'keyword_matched': keyword,
                             'created': datetime.fromtimestamp(
-                                post.created_utc).isoformat(),
+                                post.get('created_utc', 0)).isoformat(),
                         })
 
-                        # Score as opportunity
-                        opp_score = _score_opportunity(post.title,
-                                                       post.selftext[:400])
+                        opp_score = _score_opportunity(title, selftext[:400])
                         if opp_score >= 7:
-                            reply = _generate_reply(post.title,
-                                                    post.selftext[:300])
+                            reply = _generate_reply(title, selftext[:300])
                             opportunities.append({
                                 **pain_points[-1],
                                 'opportunity_score': opp_score,
@@ -54,7 +83,7 @@ def scan_pain_points(hours_back=48):
                             })
                         break
 
-            time.sleep(2)
+            time.sleep(3)
         except Exception as e:
             print(f"Reddit error r/{sub_name}: {e}")
 

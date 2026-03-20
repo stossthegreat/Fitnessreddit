@@ -4,9 +4,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # API Keys
-REDDIT_CLIENT_ID = os.getenv('REDDIT_CLIENT_ID')
-REDDIT_CLIENT_SECRET = os.getenv('REDDIT_CLIENT_SECRET')
-REDDIT_USER_AGENT = os.getenv('REDDIT_USER_AGENT', 'SkeletalPT Bot 1.0')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
 SUPABASE_URL = os.getenv('SUPABASE_URL')
